@@ -1,0 +1,5 @@
+.env
+__pycache__/
+*.pyc
+camera_capture.jpg
+screen_capture.png

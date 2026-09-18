@@ -1,0 +1,61 @@
+JarvisAI/
+│
+├── main.py
+├── speech.py
+├── commands.py
+├── chatbot.py
+├── weather.py
+├── requirements.txt
+│
+├── assets/
+│   └── jarvis_logo.png
+│
+└── data/
+
+
+JARVIS AI
+│
+├── jarvis_dashboard_v2.py   ← MAIN FILE
+├── requirements.txt
+├── weather.py
+│
+├── assets
+│   ├── logo.png
+│   ├── orb.gif
+│
+├── notes
+├── screenshots
+└── old_files
+
+
+
+JARVIS_X
+│
+├── main.py
+│
+├── core
+│   ├── ai_engine.py
+│   ├── voice.py
+│   ├── commands.py
+│   └── system_info.py
+│
+├── gui
+│   ├── dashboard.py
+│   ├── sidebar.py
+│   ├── chat_panel.py
+│   └── animations.py
+│
+├── assets
+│   ├── jarvis_logo.png
+│   ├── arc_reactor.png
+│   ├── mic.png
+│   └── background.png
+│
+├── notes
+│
+├── screenshots
+│
+├── config
+│   └── settings.py
+│
+└── requirements.txt

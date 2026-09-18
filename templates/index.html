@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S. // MARK-VII INTERFACE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --void:        #04070b;
+  --void-2:      #060b12;
+  --panel:       #0a141f;
+  --panel-2:     #0d1c2b;
+  --line:        #143142;
+  --line-bright: #1f5670;
+  --cyan:        #4fe3ff;
+  --cyan-dim:    #1c6f8c;
+  --cyan-soft:   rgba(79,227,255,.15);
+  --cyan-glow:   rgba(79,227,255,.45);
+  --red:         #ff3348;
+  --red-glow:    rgba(255,51,72,.45);
+  --amber:       #ffb454;
+  --text:        #d4eef8;
+  --text-dim:    #5f8aa0;
+  --text-faint:  #34586b;
+  --font-display: 'Orbitron', sans-serif;
+  --font-body:    'Rajdhani', sans-serif;
+  --font-mono:    'Share Tech Mono', monospace;
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+
+html,body{
+  height:100%;
+  background:var(--void);
+  color:var(--text);
+  font-family:var(--font-body);
+  overflow:hidden;
+}
+
+::selection{ background:var(--cyan); color:var(--void); }
+
+::-webkit-scrollbar{ width:6px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{ background:var(--cyan-dim); }
+
+/* ============================================================
+   AMBIENT BACKGROUND
+   ============================================================ */
+.bg-grid{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size:48px 48px;
+  opacity:.18;
+  mask-image: radial-gradient(ellipse at center, black 10%, transparent 75%);
+}
+
+.bg-vignette{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 0%, rgba(79,227,255,.06), transparent 60%),
+    radial-gradient(ellipse 100% 100% at 50% 100%, rgba(0,0,0,.7), transparent 50%);
+}
+
+.scanline{
+  position:fixed; left:0; width:100%; height:120px; z-index:2; pointer-events:none;
+  background:linear-gradient(180deg, transparent, rgba(79,227,255,.05) 45%, rgba(79,227,255,.09) 50%, rgba(79,227,255,.05) 55%, transparent);
+  animation:scan 9s linear infinite;
+  mix-blend-mode:screen;
+}
+@keyframes scan{
+  0%{ top:-120px; }
+  100%{ top:100vh; }
+}
+
+.noise{
+  position:fixed; inset:0; z-index:3; pointer-events:none; opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   BOOT SEQUENCE
+   ============================================================ */
+#boot{
+  position:fixed; inset:0; z-index:100; background:var(--void);
+  display:flex; align-items:center; justify-content:center; flex-direction:column;
+  transition:opacity .8s ease, visibility .8s ease;
+}
+#boot.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+
+.boot-ring{
+  width:180px; height:180px; border-radius:50%;
+  border:2px solid var(--line-bright);
+  border-top-color:var(--cyan);
+  animation:spin 1.4s linear infinite;
+  position:relative;
+  margin-bottom:36px;
+}
+.boot-ring::after{
+  content:''; position:absolute; inset:22px; border-radius:50%;
+  border:1px solid var(--cyan-dim); border-bottom-color:var(--cyan);
+  animation:spin 2.2s linear infinite reverse;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+.boot-text{
+  font-family:var(--font-mono); color:var(--cyan); font-size:13px;
+  letter-spacing:2px; text-align:center; width:420px; max-width:80vw;
+  height:20px;
+}
+.boot-log{
+  font-family:var(--font-mono); color:var(--text-dim); font-size:11px;
+  margin-top:18px; text-align:left; width:420px; max-width:80vw; height:110px;
+  line-height:1.8; letter-spacing:1px;
+}
+.boot-log div{ opacity:0; animation:fadeIn .3s forwards; }
+.boot-bar-track{
+  width:420px; max-width:80vw; height:3px; background:var(--line); margin-top:18px; overflow:hidden;
+}
+.boot-bar{ height:100%; width:0%; background:var(--cyan); box-shadow:0 0 10px var(--cyan-glow); animation:load 3.4s ease forwards; }
+@keyframes load{ to{ width:100%; } }
+@keyframes fadeIn{ to{ opacity:1; } }
+
+/* ============================================================
+   SHELL
+   ============================================================ */
+#app{
+  position:relative; z-index:1;
+  height:100vh; width:100vw;
+  display:flex; flex-direction:column;
+  padding:14px 18px 18px;
+  opacity:0; transition:opacity 1s ease;
+}
+#app.ready{ opacity:1; }
+
+/* angular panel shape via clip-path */
+.panel{
+  background:linear-gradient(180deg, var(--panel), var(--panel-2));
+  border:1px solid var(--line);
+  position:relative;
+  clip-path: polygon(0 14px, 14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+.panel::before{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:
+    linear-gradient(90deg, var(--cyan) 0 18px, transparent 18px) top left / 100% 1px no-repeat,
+    linear-gradient(90deg, var(--cyan) 0 18px, transparent 18px) bottom right / 100% 1px no-repeat;
+  opacity:.5;
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 26px; margin-bottom:14px;
+}
+.brand{ display:flex; align-items:center; gap:14px; }
+.brand-mark{
+  width:38px; height:38px; border:2px solid var(--cyan); border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 14px var(--cyan-glow), inset 0 0 8px var(--cyan-glow);
+  animation:pulseMark 2.6s ease-in-out infinite;
+}
+.brand-mark::after{ content:''; width:10px; height:10px; border-radius:50%; background:var(--cyan); box-shadow:0 0 10px var(--cyan); }
+@keyframes pulseMark{ 0%,100%{ box-shadow:0 0 14px var(--cyan-glow), inset 0 0 8px var(--cyan-glow);} 50%{ box-shadow:0 0 24px var(--cyan-glow), inset 0 0 14px var(--cyan-glow);} }
+
+.brand h1{
+  font-family:var(--font-display); font-weight:900; font-size:22px; letter-spacing:6px;
+  color:var(--text); text-shadow:0 0 18px var(--cyan-glow);
+}
+.brand .sub{ font-family:var(--font-mono); font-size:10px; color:var(--text-dim); letter-spacing:3px; margin-top:2px; }
+
+.header-right{ display:flex; align-items:center; gap:28px; }
+.clock-block{ text-align:right; }
+#clock{ font-family:var(--font-mono); font-size:22px; color:var(--cyan); letter-spacing:2px; text-shadow:0 0 10px var(--cyan-glow); }
+#date{ font-family:var(--font-mono); font-size:10px; color:var(--text-dim); letter-spacing:2px; }
+
+.status-chip{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:2px;
+  padding:8px 16px; border:1px solid var(--cyan-dim); color:var(--cyan);
+  display:flex; align-items:center; gap:8px;
+  clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
+}
+.status-chip .dot{ width:7px; height:7px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); animation:blink 1.6s ease-in-out infinite; }
+@keyframes blink{ 0%,100%{ opacity:1;} 50%{ opacity:.35;} }
+.status-chip.alert{ border-color:var(--red); color:var(--red); }
+.status-chip.alert .dot{ background:var(--red); box-shadow:0 0 8px var(--red); }
+
+/* ============================================================
+   MAIN GRID
+   ============================================================ */
+main{
+  flex:1; display:grid; grid-template-columns: 260px 1fr 300px; gap:14px; min-height:0;
+}
+
+.col-title{
+  font-family:var(--font-display); font-size:13px; letter-spacing:3px; color:var(--cyan);
+  padding:16px 20px 10px; display:flex; align-items:center; gap:10px;
+}
+.col-title::before{ content:''; width:8px; height:8px; background:var(--cyan); box-shadow:0 0 8px var(--cyan); transform:rotate(45deg); }
+
+/* ---------------- LEFT: COMMAND DECK ---------------- */
+#left{ display:flex; flex-direction:column; overflow:hidden; }
+.deck{ padding:4px 16px 16px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+
+.deck-btn{
+  font-family:var(--font-body); font-weight:600; font-size:14px; letter-spacing:1px;
+  color:var(--text); background:rgba(79,227,255,.03);
+  border:1px solid var(--line); border-left:3px solid var(--cyan-dim);
+  padding:12px 14px; display:flex; align-items:center; gap:12px; cursor:pointer;
+  transition:background .2s, border-color .2s, transform .12s;
+  text-align:left;
+}
+.deck-btn .ic{ font-size:17px; width:20px; text-align:center; }
+.deck-btn:hover{ background:var(--cyan-soft); border-left-color:var(--cyan); transform:translateX(3px); }
+.deck-btn:active{ transform:translateX(1px) scale(.99); }
+.deck-btn small{ display:block; font-family:var(--font-mono); font-size:9px; color:var(--text-faint); letter-spacing:1.5px; margin-top:1px; }
+
+.deck-footer{
+  margin-top:auto; padding:14px 20px; border-top:1px solid var(--line);
+  font-family:var(--font-mono); font-size:9.5px; color:var(--text-faint); letter-spacing:1px; line-height:1.7;
+}
+
+/* ---------------- CENTER: CORE ---------------- */
+#center{ display:flex; flex-direction:column; min-height:0; }
+
+.core-stage{
+  display:flex; align-items:center; justify-content:center; position:relative;
+  padding:6px 0 10px; flex-shrink:0;
+}
+.reactor{ width:170px; height:170px; position:relative; }
+.reactor svg{ width:100%; height:100%; overflow:visible; }
+.ring{ fill:none; stroke:var(--cyan-dim); }
+.ring.bright{ stroke:var(--cyan); filter:drop-shadow(0 0 6px var(--cyan-glow)); }
+.ring-spin-cw{ transform-origin:50% 50%; animation:spin 12s linear infinite; }
+.ring-spin-ccw{ transform-origin:50% 50%; animation:spin 9s linear infinite reverse; }
+.ring-spin-slow{ transform-origin:50% 50%; animation:spin 22s linear infinite; }
+.core-glow{
+  position:absolute; top:50%; left:50%; width:52px; height:52px; transform:translate(-50%,-50%);
+  border-radius:50%; background:radial-gradient(circle, #fff 0%, var(--cyan) 40%, transparent 72%);
+  box-shadow:0 0 30px 8px var(--cyan-glow), 0 0 60px 20px rgba(79,227,255,.25);
+  animation:core-pulse 2.4s ease-in-out infinite;
+}
+@keyframes core-pulse{ 0%,100%{ opacity:.85; transform:translate(-50%,-50%) scale(1);} 50%{ opacity:1; transform:translate(-50%,-50%) scale(1.08);} }
+
+.core-label{
+  position:absolute; bottom:-4px; left:50%; transform:translateX(-50%);
+  font-family:var(--font-mono); font-size:9px; letter-spacing:2px; color:var(--text-dim);
+}
+
+/* ---------------- TERMINAL / CHAT ---------------- */
+.terminal{
+  flex:1; min-height:0; margin:0 18px 12px; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  display:flex; flex-direction:column;
+  background:linear-gradient(180deg, rgba(79,227,255,.02), transparent 30%);
+}
+.terminal-bar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 4px; font-family:var(--font-mono); font-size:9px; color:var(--text-faint); letter-spacing:2px;
+}
+.terminal-bar .dots{ display:flex; gap:5px; }
+.terminal-bar .dots span{ width:6px; height:6px; border-radius:50%; background:var(--line-bright); }
+
+#log{
+  flex:1; overflow-y:auto; padding:4px 4px 10px; font-size:15px; line-height:1.55;
+}
+.msg{ margin-bottom:14px; animation:fadeIn .3s ease; }
+.msg .who{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:2px; margin-bottom:3px; display:flex; gap:8px; align-items:center;
+}
+.msg.user .who{ color:var(--text-dim); }
+.msg.jarvis .who{ color:var(--cyan); }
+.msg .body{ color:var(--text); padding-left:2px; }
+.msg.jarvis .body{ border-left:2px solid var(--cyan-dim); padding-left:12px; }
+.msg.user .body{ border-left:2px solid var(--line); padding-left:12px; color:var(--text-dim); }
+.msg .ts{ color:var(--text-faint); font-size:9px; }
+
+.typing{ display:inline-flex; gap:4px; padding-left:12px; border-left:2px solid var(--cyan-dim); }
+.typing span{ width:5px; height:5px; border-radius:50%; background:var(--cyan); animation:typingDot 1s infinite; }
+.typing span:nth-child(2){ animation-delay:.15s; }
+.typing span:nth-child(3){ animation-delay:.3s; }
+@keyframes typingDot{ 0%,60%,100%{ opacity:.25; transform:translateY(0);} 30%{ opacity:1; transform:translateY(-3px);} }
+
+/* ---------------- INPUT ---------------- */
+.input-row{ display:flex; gap:10px; padding:0 18px 18px; }
+#entry{
+  flex:1; background:var(--void-2); border:1px solid var(--line-bright); color:var(--text);
+  font-family:var(--font-body); font-size:15px; padding:13px 16px; outline:none;
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+}
+#entry:focus{ border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan-soft); }
+#entry::placeholder{ color:var(--text-faint); }
+
+.icon-btn{
+  width:48px; height:48px; background:var(--void-2); border:1px solid var(--line-bright); color:var(--cyan);
+  font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px);
+  transition:background .2s, box-shadow .2s;
+}
+.icon-btn:hover{ background:var(--cyan-soft); box-shadow:0 0 14px var(--cyan-soft); }
+.icon-btn.active{ color:var(--red); border-color:var(--red); box-shadow:0 0 14px var(--red-glow); animation:blink 1s ease-in-out infinite; }
+
+/* ---------------- RIGHT: DIAGNOSTICS ---------------- */
+#right{ display:flex; flex-direction:column; overflow-y:auto; }
+.diag-wrap{ padding:6px 18px 18px; display:flex; flex-direction:column; gap:16px; }
+
+.sim-badge{
+  font-family:var(--font-mono); font-size:8px; letter-spacing:1.5px; color:var(--amber);
+  border:1px solid var(--amber); padding:1px 5px; opacity:.75; margin-left:6px;
+}
+
+.gauge-card{ display:flex; align-items:center; gap:14px; }
+.gauge{ position:relative; width:64px; height:64px; flex-shrink:0; }
+.gauge svg{ width:100%; height:100%; transform:rotate(-90deg); }
+.gauge circle{ fill:none; stroke-width:5; }
+.gauge .track{ stroke:var(--line); }
+.gauge .fill{ stroke:var(--cyan); stroke-linecap:round; filter:drop-shadow(0 0 5px var(--cyan-glow)); transition:stroke-dashoffset .6s ease; }
+.gauge .val{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-mono); font-size:12px; color:var(--text);
+}
+.gauge-info .label{ font-family:var(--font-display); font-size:11px; letter-spacing:2px; color:var(--text-dim); display:flex; align-items:center; }
+.gauge-info .sub{ font-family:var(--font-mono); font-size:10px; color:var(--text-faint); margin-top:3px; }
+
+.divider{ height:1px; background:var(--line); margin:2px 0; }
+
+.net-row, .power-row{ display:flex; align-items:center; justify-content:space-between; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); letter-spacing:1px; }
+.net-row .v, .power-row .v{ color:var(--cyan); }
+.net-row.offline .v{ color:var(--red); }
+
+.ai-state{
+  margin-top:auto; padding:16px 18px; border-top:1px solid var(--line);
+  text-align:center;
+}
+.ai-state .label{ font-family:var(--font-mono); font-size:9px; color:var(--text-faint); letter-spacing:2px; margin-bottom:6px; }
+.ai-state .value{ font-family:var(--font-display); font-size:14px; letter-spacing:2px; color:var(--cyan); text-shadow:0 0 10px var(--cyan-glow); }
+.ai-state .value.listening{ color:var(--red); text-shadow:0 0 10px var(--red-glow); }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 980px){
+  main{ grid-template-columns:1fr; grid-auto-rows:auto; overflow-y:auto; }
+  #left, #right{ max-height:220px; }
+  #center{ min-height:520px; }
+  html,body{ overflow:auto; }
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-vignette"></div>
+<div class="scanline"></div>
+<div class="noise"></div>
+
+<!-- ============ BOOT SEQUENCE ============ -->
+<div id="boot">
+  <div class="boot-ring"></div>
+  <div class="boot-text" id="bootText">INITIALIZING J.A.R.V.I.S.</div>
+  <div class="boot-bar-track"><div class="boot-bar"></div></div>
+  <div class="boot-log" id="bootLog"></div>
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div id="app">
+
+  <header class="panel">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <h1>J.A.R.V.I.S.</h1>
+        <div class="sub">JUST A RATHER VERY INTELLIGENT SYSTEM &nbsp;·&nbsp; MARK VII</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="clock-block">
+        <div id="clock">00:00:00</div>
+        <div id="date">—</div>
+      </div>
+      <div class="status-chip" id="statusChip"><span class="dot"></span><span id="statusChipText">ONLINE</span></div>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ============ LEFT: COMMAND DECK ============ -->
+    <section id="left" class="panel">
+      <div class="col-title">COMMAND DECK</div>
+      <div class="deck" id="deck">
+        <button class="deck-btn" data-action="link" data-url="https://google.com"><span class="ic">🌐</span><span>SEARCH<small>google.com</small></span></button>
+        <button class="deck-btn" data-action="link" data-url="https://youtube.com"><span class="ic">📺</span><span>MEDIA<small>youtube.com</small></span></button>
+        <button class="deck-btn" data-action="local" data-name="Calculator"><span class="ic">🧮</span><span>CALCULATOR<small>local app</small></span></button>
+        <button class="deck-btn" data-action="local" data-name="Notepad"><span class="ic">📝</span><span>NOTEPAD<small>local app</small></span></button>
+        <button class="deck-btn" data-action="local" data-name="Explorer"><span class="ic">📂</span><span>EXPLORER<small>local app</small></span></button>
+        <button class="deck-btn" data-action="local" data-name="Terminal"><span class="ic">💻</span><span>TERMINAL<small>local app</small></span></button>
+        <button class="deck-btn" data-action="settings"><span class="ic">⚙️</span><span>SETTINGS<small>preferences</small></span></button>
+      </div>
+      <div class="deck-footer">
+        LOCAL APP LAUNCHES ARE SANDBOXED IN-BROWSER.<br>
+        WEB TARGETS OPEN IN A NEW TAB.
+      </div>
+    </section>
+
+    <!-- ============ CENTER: CORE + CHAT ============ -->
+    <section id="center" class="panel">
+      <div class="core-stage">
+        <div class="reactor">
+          <svg viewBox="0 0 170 170">
+            <g class="ring-spin-slow" style="transform-origin:85px 85px;">
+              <circle class="ring" cx="85" cy="85" r="82" stroke-dasharray="4 10"/>
+            </g>
+            <g class="ring-spin-cw" style="transform-origin:85px 85px;">
+              <circle class="ring bright" cx="85" cy="85" r="66" stroke-dasharray="90 210"/>
+            </g>
+            <g class="ring-spin-ccw" style="transform-origin:85px 85px;">
+              <circle class="ring" cx="85" cy="85" r="50" stroke-dasharray="40 20 4 20"/>
+            </g>
+            <g class="ring-spin-cw" style="transform-origin:85px 85px; animation-duration:16s;">
+              <circle class="ring bright" cx="85" cy="85" r="36" stroke-dasharray="6 8"/>
+            </g>
+          </svg>
+          <div class="core-glow"></div>
+          <div class="core-label">CORE STABLE</div>
+        </div>
+      </div>
+
+      <div class="terminal">
+        <div class="terminal-bar">
+          <span>TRANSCRIPT_LOG.SYS</span>
+          <span class="dots"><span></span><span></span><span></span></span>
+        </div>
+        <div id="log"></div>
+      </div>
+
+      <div class="input-row">
+        <input id="entry" type="text" placeholder="⚡ Ask Jarvis anything…" autocomplete="off">
+        <button class="icon-btn" id="micBtn" title="Voice input">🎤</button>
+        <button class="icon-btn" id="sendBtn" title="Send">➤</button>
+      </div>
+    </section>
+
+    <!-- ============ RIGHT: DIAGNOSTICS ============ -->
+    <section id="right" class="panel">
+      <div class="col-title">DIAGNOSTICS<span class="sim-badge">SIM</span></div>
+      <div class="diag-wrap">
+
+        <div class="gauge-card">
+          <div class="gauge">
+            <svg viewBox="0 0 64 64">
+              <circle class="track" cx="32" cy="32" r="27"/>
+              <circle class="fill" id="cpuFill" cx="32" cy="32" r="27" stroke-dasharray="170" stroke-dashoffset="170"/>
+            </svg>
+            <div class="val" id="cpuVal">0%</div>
+          </div>
+          <div class="gauge-info"><div class="label">CPU LOAD</div><div class="sub" id="cpuSub">nominal</div></div>
+        </div>
+
+        <div class="gauge-card">
+          <div class="gauge">
+            <svg viewBox="0 0 64 64">
+              <circle class="track" cx="32" cy="32" r="27"/>
+              <circle class="fill" id="ramFill" cx="32" cy="32" r="27" stroke-dasharray="170" stroke-dashoffset="170"/>
+            </svg>
+            <div class="val" id="ramVal">0%</div>
+          </div>
+          <div class="gauge-info"><div class="label">MEMORY</div><div class="sub" id="ramSub">nominal</div></div>
+        </div>
+
+        <div class="gauge-card">
+          <div class="gauge">
+            <svg viewBox="0 0 64 64">
+              <circle class="track" cx="32" cy="32" r="27"/>
+              <circle class="fill" id="pwrFill" cx="32" cy="32" r="27" stroke-dasharray="170" stroke-dashoffset="170"/>
+            </svg>
+            <div class="val" id="pwrVal">0%</div>
+          </div>
+          <div class="gauge-info"><div class="label">POWER CELL</div><div class="sub" id="pwrSub">charging</div></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="net-row" id="netRow">
+          <span>🌐 UPLINK</span><span class="v" id="netVal">CONNECTED</span>
+        </div>
+        <div class="power-row">
+          <span>🛰 LATENCY</span><span class="v" id="latVal">— ms</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="power-row">
+          <span>📡 SESSION</span><span class="v" id="sessionTime">00:00:00</span>
+        </div>
+        <div class="power-row">
+          <span>🔊 VOICE I/O</span><span class="v" id="voiceCap">CHECKING…</span>
+        </div>
+
+      </div>
+
+      <div class="ai-state">
+        <div class="label">AI STATE</div>
+        <div class="value" id="aiState">ONLINE</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+
+/* ============================================================
+   BOOT SEQUENCE
+   ============================================================ */
+const bootLines = [
+  "> LOADING NEURAL CORE...........OK",
+  "> CALIBRATING ARC REACTOR.......OK",
+  "> MOUNTING VOICE INTERFACE......OK",
+  "> ESTABLISHING UPLINK...........OK",
+  "> WELCOME BACK, SIR."
+];
+const bootLogEl = document.getElementById('bootLog');
+bootLines.forEach((line, i)=>{
+  const d = document.createElement('div');
+  d.textContent = line;
+  d.style.animationDelay = (0.4 + i*0.55) + 's';
+  bootLogEl.appendChild(d);
+});
+
+setTimeout(()=>{
+  document.getElementById('boot').classList.add('hidden');
+  document.getElementById('app').classList.add('ready');
+  startClock();
+  startSessionTimer();
+  pushMessage('jarvis', "All systems online. Good to see you, sir. How can I assist?");
+  entry.focus();
+}, 3400);
+
+/* ============================================================
+   CLOCK
+   ============================================================ */
+const clockEl = document.getElementById('clock');
+const dateEl = document.getElementById('date');
+function startClock(){
+  tick();
+  setInterval(tick, 1000);
+}
+function tick(){
+  const now = new Date();
+  clockEl.textContent = now.toLocaleTimeString('en-GB');
+  dateEl.textContent = now.toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' }).toUpperCase();
+}
+
+let sessionStart = Date.now();
+function startSessionTimer(){
+  setInterval(()=>{
+    const secs = Math.floor((Date.now()-sessionStart)/1000);
+    const h = String(Math.floor(secs/3600)).padStart(2,'0');
+    const m = String(Math.floor((secs%3600)/60)).padStart(2,'0');
+    const s = String(secs%60).padStart(2,'0');
+    document.getElementById('sessionTime').textContent = `${h}:${m}:${s}`;
+  }, 1000);
+}
+
+/* ============================================================
+   SIMULATED SYSTEM DIAGNOSTICS
+   (A browser cannot read real OS/CPU/RAM/battery stats —
+    these values are procedurally simulated for the HUD.)
+   ============================================================ */
+const GAUGE_CIRC = 170; // 2*pi*27 ≈ 169.6
+
+function setGauge(fillId, valId, subId, pct, labelFn){
+  const fill = document.getElementById(fillId);
+  const val = document.getElementById(valId);
+  const offset = GAUGE_CIRC - (pct/100)*GAUGE_CIRC;
+  fill.style.strokeDashoffset = offset;
+  val.textContent = Math.round(pct) + '%';
+  if(subId && labelFn) document.getElementById(subId).textContent = labelFn(pct);
+}
+
+let simCpu = 22, simRam = 41, simPwr = 87, pwrDir = -1;
+
+function stepSim(){
+  simCpu = clamp(simCpu + (Math.random()*14-7), 4, 96);
+  simRam = clamp(simRam + (Math.random()*6-3), 15, 88);
+  simPwr = clamp(simPwr + pwrDir*0.4 + (Math.random()*0.3-0.15), 8, 100);
+  if(simPwr<=9) pwrDir = 1;
+  if(simPwr>=99) pwrDir = -1;
+
+  setGauge('cpuFill','cpuVal','cpuSub', simCpu, p=> p>75?'elevated': p>45?'active':'nominal');
+  setGauge('ramFill','ramVal','ramSub', simRam, p=> p>75?'high': p>45?'moderate':'nominal');
+  setGauge('pwrFill','pwrVal','pwrSub', simPwr, ()=> pwrDir>0?'charging':'on battery');
+
+  document.getElementById('latVal').textContent = Math.round(18+Math.random()*40) + ' ms';
+}
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+updateSystem();
+
+setInterval(updateSystem, 1000);
+
+// network status (real check — browser online/offline API)
+function updateNet(){
+  const row = document.getElementById('netRow');
+  const val = document.getElementById('netVal');
+  if(navigator.onLine){
+    row.classList.remove('offline');
+    val.textContent = 'CONNECTED';
+  } else {
+    row.classList.add('offline');
+    val.textContent = 'OFFLINE';
+  }
+}
+
+async function updateSystem() {
+
+    try {
+
+        const response = await fetch("/system");
+
+        const data = await response.json();
+
+        setGauge(
+            "cpuFill",
+            "cpuVal",
+            "cpuSub",
+            data.cpu,
+            p => p > 75 ? "elevated" : p > 45 ? "active" : "nominal"
+        );
+
+        setGauge(
+            "ramFill",
+            "ramVal",
+            "ramSub",
+            data.ram,
+            p => p > 75 ? "high" : p > 45 ? "moderate" : "nominal"
+        );
+
+        setGauge(
+            "pwrFill",
+            "pwrVal",
+            "pwrSub",
+            data.battery,
+            () => data.battery > 20 ? "Battery OK" : "Low Battery"
+        );
+
+        document.getElementById("netVal").textContent =
+            data.internet ? "CONNECTED" : "OFFLINE";
+
+    }
+
+    catch(err) {
+
+        console.error(err);
+
+    }
+
+}
+
+updateNet();
+window.addEventListener('online', updateNet);
+window.addEventListener('offline', updateNet);
+
+/* ============================================================
+   CHAT LOG
+   ============================================================ */
+const log = document.getElementById('log');
+function pushMessage(who, text){
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + who;
+  const now = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  wrap.innerHTML = `
+    <div class="who">${who==='user' ? '// YOU' : '// JARVIS'} <span class="ts">${now}</span></div>
+    <div class="body"></div>
+  `;
+  wrap.querySelector('.body').textContent = text;
+  log.appendChild(wrap);
+  log.scrollTop = log.scrollHeight;
+}
+
+function showTyping(){
+  const wrap = document.createElement('div');
+  wrap.className = 'msg jarvis';
+  wrap.id = 'typingIndicator';
+  wrap.innerHTML = `<div class="who">// JARVIS</div><div class="typing"><span></span><span></span><span></span></div>`;
+  log.appendChild(wrap);
+  log.scrollTop = log.scrollHeight;
+}
+function hideTyping(){
+  const t = document.getElementById('typingIndicator');
+  if(t) t.remove();
+}
+
+/* ============================================================
+   AI RESPONSE ENGINE (simulated — swap for a real API call
+   inside askJarvis() when you have a backend/key ready)
+   ============================================================ */
+const aiStateEl = document.getElementById('aiState');
+
+function setAiState(text, alert){
+  aiStateEl.textContent = text;
+  aiStateEl.classList.toggle('listening', !!alert);
+}
+
+function askJarvis(input){
+  const q = input.toLowerCase().trim();
+
+  const rules = [
+    { test: /^(hi|hey|hello|yo)\b/, res: ["Hello, sir. Systems are nominal.", "Good to hear from you. What do you need?"] },
+    { test: /how are you|status report/, res: ["All systems operating within normal parameters.", "Running smoothly — reactor stable, uplink green."] },
+    { test: /time/, res: [()=>`The current time is ${new Date().toLocaleTimeString('en-GB')}.`] },
+    { test: /date|day is it/, res: [()=>`Today is ${new Date().toLocaleDateString('en-US',{weekday:'long', month:'long', day:'numeric', year:'numeric'})}.`] },
+    { test: /cpu|processor/, res: [()=>`CPU load is currently at ${Math.round(simCpu)} percent.`] },
+    { test: /ram|memory/, res: [()=>`Memory usage is sitting at ${Math.round(simRam)} percent.`] },
+    { test: /battery|power/, res: [()=>`Power cell is at ${Math.round(simPwr)} percent${pwrDir>0?', charging.':'.'}`] },
+    { test: /who are you|your name/, res: ["I am J.A.R.V.I.S. — Just A Rather Very Intelligent System, at your service."] },
+    { test: /thank/, res: ["Always a pleasure, sir.", "Of course."] },
+    { test: /joke/, res: ["I'd tell you a joke about UDP, but you might not get it.", "Why do programmers prefer dark mode? Because light attracts bugs."] },
+    { test: /open google|search/, res: ["Opening the search interface now."] , action:()=>window.open('https://google.com','_blank') },
+    { test: /open youtube|play music|video/, res: ["Launching media interface."], action:()=>window.open('https://youtube.com','_blank') },
+    { test: /weather/, res: ["I don't have live weather data connected in this build — wire up a weather API and I'll report it here."] },
+    { test: /calculator|notepad|explorer|terminal|cmd/, res: ["Local application access is sandboxed in the browser. This launches as a full desktop build instead."] },
+    { test: /shut ?down|sleep|goodbye|bye/, res: ["Standing by, sir. Powering down non-essential systems."] },
+  ];
+
+  for(const r of rules){
+    if(r.test.test(q)){
+      if(r.action) r.action();
+      const pick = r.res[Math.floor(Math.random()*r.res.length)];
+      return typeof pick === 'function' ? pick() : pick;
+    }
+  }
+
+  const fallback = [
+    "Acknowledged. I'm still learning that request — connect a language model backend for full reasoning.",
+    "I don't have a wired response for that yet. Try asking about system status, time, or date.",
+    "Processing... that one's outside my current rule set. This is the spot to plug in a real AI API call.",
+  ];
+  return fallback[Math.floor(Math.random()*fallback.length)];
+}
+
+/* ============================================================
+   SEND / INPUT HANDLING
+   ============================================================ */
+const entry = document.getElementById('entry');
+const sendBtn = document.getElementById('sendBtn');
+
+async function sendMessage() {
+
+    const val = entry.value.trim();
+
+    if (!val) return;
+
+    pushMessage("user", val);
+
+    entry.value = "";
+
+    setAiState("THINKING");
+
+    showTyping();
+
+    try {
+
+        const response = await fetch("/chat", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                message: val
+            })
+
+        });
+
+        const data = await response.json();
+
+        hideTyping();
+
+        pushMessage("jarvis", data.reply);
+
+    }
+
+    catch (err) {
+
+        hideTyping();
+
+        pushMessage("jarvis", "Unable to contact backend.");
+
+        console.error(err);
+
+    }
+
+    setAiState("ONLINE");
+
+}
+
+sendBtn.addEventListener('click', sendMessage);
+entry.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMessage(); });
+
+/* ============================================================
+   COMMAND DECK
+   ============================================================ */
+document.getElementById("deck").addEventListener("click", async (e) => {
+
+    const btn = e.target.closest(".deck-btn");
+
+    if (!btn) return;
+
+    const action = btn.dataset.action;
+
+    if (action === "link") {
+
+        const url = btn.dataset.url;
+
+        let command = "";
+
+        if (url.includes("google"))
+            command = "google";
+
+        else if (url.includes("youtube"))
+            command = "youtube";
+
+        if (command) {
+
+            await fetch("/command", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    command: command
+                })
+
+            });
+
+        }
+
+        return;
+
+    }
+
+    if (action === "local") {
+
+        const name = btn.dataset.name.toLowerCase();
+
+        await fetch("/command", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                command: name
+            })
+
+        });
+
+    }
+
+});
+
+/* ============================================================
+   VOICE INPUT (Web Speech API where available)
+   ============================================================ */
+
+const micBtn = document.getElementById("micBtn");
+const voiceCapEl = document.getElementById("voiceCap");
+
+voiceCapEl.textContent = "READY";
+
+micBtn.addEventListener("click", async () => {
+
+    micBtn.classList.add("active");
+
+    setAiState("LISTENING");
+
+    try {
+
+        const response = await fetch("/listen", {
+            method: "POST"
+        });
+
+        const data = await response.json();
+
+        micBtn.classList.remove("active");
+
+        if (data.success) {
+
+            entry.value = data.text;
+
+            sendMessage();
+
+        } else {
+
+            alert(data.error || "Voice recognition failed.");
+
+        }
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+        micBtn.classList.remove("active");
+
+        setAiState("ONLINE");
+
+    }
+
+});
+
+})();
+</script>
+</body>
+</html>
